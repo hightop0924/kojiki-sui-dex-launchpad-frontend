@@ -97,10 +97,64 @@ export const CHAIN_INFO: ChainInfoMap = {
     label: 'SuiDev',
     logoUrl: suiLogo,
     nativeCoin: SUI_DEVNET_CoinInfo['0x2::sui::SUI'],
-    aniCoin: SUI_DEVNET_CoinInfo['0x1495bf38cc489bb78e4fc4de6ad5d57954b66b5a260f84e9bf6bcd5d0514c8db::usdt::USDT'],
+    aniCoin: SUI_DEVNET_CoinInfo['0x2a103227aa10cd45f3f7c8a2c03370ef9c7b6b707d30e1bfab8b9e1f4d655d1d::usdt::USDT'],
     defaultBuyCoin:
-      SUI_DEVNET_CoinInfo['0x1495bf38cc489bb78e4fc4de6ad5d57954b66b5a260f84e9bf6bcd5d0514c8db::usdt::USDT'],
-    stableCoin: SUI_DEVNET_CoinInfo['0x1495bf38cc489bb78e4fc4de6ad5d57954b66b5a260f84e9bf6bcd5d0514c8db::usdt::USDT'],
+      SUI_DEVNET_CoinInfo['0x2a103227aa10cd45f3f7c8a2c03370ef9c7b6b707d30e1bfab8b9e1f4d655d1d::usdt::USDT'],
+    stableCoin: SUI_DEVNET_CoinInfo['0x2a103227aa10cd45f3f7c8a2c03370ef9c7b6b707d30e1bfab8b9e1f4d655d1d::usdt::USDT'],
+  },
+}
+
+interface MasterChefInfo {
+  SwapPackage: string,
+  SakePackage: string,
+  MasterchefModule: string,
+  SakeModule: string,
+  XSakeModule: string,
+  MasterchefStorage: string,
+  AccountStorage: string,
+  SakeStorage: string,
+  XSakeStorage: string,
+  ClockModule: string,
+}
+
+export type MasterChefInfoMap = { [chainId: number]: MasterChefInfo }
+
+export const MasterChef_Info : MasterChefInfoMap = {
+  [SupportedChainId.SUI] : {
+    SwapPackage: '0x0000000000000000000000000000000000000000000000000000000000000000',
+    MasterchefModule: 'master_chef',
+    MasterchefStorage: '0x0000000000000000000000000000000000000000000000000000000000000000',
+    AccountStorage: '0x0000000000000000000000000000000000000000000000000000000000000000',
+    SakePackage: '0x0000000000000000000000000000000000000000000000000000000000000000',
+    SakeModule: 'sake',
+    XSakeModule: 'xsake',
+    SakeStorage: '0x0000000000000000000000000000000000000000000000000000000000000000',
+    XSakeStorage: '0x0000000000000000000000000000000000000000000000000000000000000006',
+    ClockModule: '0x0000000000000000000000000000000000000000000000000000000000000006',
+  },
+  [SupportedChainId.SUI_TESTNET] : {
+    SwapPackage: '',
+    SakePackage: '0x0000000000000000000000000000000000000000000000000000000000000000',
+    MasterchefModule: 'master_chef',
+    SakeModule: 'sake',
+    XSakeModule: 'xsake',
+    MasterchefStorage: '0x0000000000000000000000000000000000000000000000000000000000000006',
+    AccountStorage: '0x0000000000000000000000000000000000000000000000000000000000000006',
+    SakeStorage: '0x0000000000000000000000000000000000000000000000000000000000000000',
+    XSakeStorage: '0x0000000000000000000000000000000000000000000000000000000000000006',
+    ClockModule: '0x0000000000000000000000000000000000000000000000000000000000000006',
+  },
+  [SupportedChainId.SUI_DEVNET] : {
+    SwapPackage: '0x58dd46e6cbcf5daf98536e5a1838ccfa205eab747eb6d08ba8ff672c1694b7b9',
+    MasterchefModule: 'master_chef',
+    AccountStorage: '0x4a15795a8d6194cb394ef64fbb70db1b864734ed1a20516206f103775c4d32b6',
+    MasterchefStorage: '0x41b9a7682d5cf744d872c81887a8b715732641b8b6b3699bee71f19f3f2f4c90',
+    SakePackage: '0xa8a8ca7d5f9a396a8c25e1c1643d9dd20381deb381cc9d6e39d345c3793da94f',
+    SakeModule: 'sake',
+    XSakeModule: 'xsake',
+    SakeStorage: '0x81466270382295085a0f9e499124d7b3e2f1f886a597b1acfebe396f773c0874',
+    XSakeStorage: '0xdc2a79db0ff7c7d7fb11c8bfb0b8d341e519226976412ddcf6166b13eb9ab05d',
+    ClockModule: '0x0000000000000000000000000000000000000000000000000000000000000006',
   },
 }
 
@@ -113,4 +167,8 @@ export function getChainInfo(chainId: SupportedChainId): BaseChainInfo {
 
 export function getChainInfoOrDefault(chainId: number | undefined) {
   return getChainInfo(chainId) ?? CHAIN_INFO[SupportedChainId.SUI_TESTNET]
+}
+
+export function getMasterchefInfo(chainId: number) {
+  return MasterChef_Info[chainId] ?? undefined;
 }

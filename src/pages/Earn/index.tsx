@@ -74,7 +74,7 @@ const StyledHr = styled.hr`
   border: none;
 `
 
-const EmptyProposals = styled.div`
+export const EmptyProposals = styled.div`
   padding: 16px 12px;
   border-radius: 12px;
   display: flex;
@@ -95,9 +95,9 @@ export default function Farming() {
 
   const pairKeyNotZero: string[] = []
   for (const pairKey in allLpBalances) {
-    //if (allLpBalances[pairKey] !== '0') {
+    if (allLpBalances[pairKey] !== '0') {
       pairKeyNotZero.push(pairKey)
-    //}
+    }
   }
 
   // your LP
@@ -110,16 +110,18 @@ export default function Farming() {
         pairTasksPromise.push(ConnectionInstance.getPair(chainId, coinX, coinY))
       }
       let allPairs = await ConnectionInstance.getSuiAllPair();
-      console.log("allpairs ", allPairs);
       const pairResults = await Promise.all(pairTasksPromise)
-      console.log("pairResults ", pairResults);
-      setPairTasksLoading(false)
-
+      
       let results = Object.values(allPairs).map((v) => ({
         ...v,
-        lpTotal: pairResults.find(p => p.coinX == v.coinX && p.coinY == v.coinY)?.lpTotal ?? 0
+        lpTotal: pairResults.find(p => p !== undefined && p.coinX == v.coinX && p.coinY == v.coinY)?.lpTotal ?? 0,
       }));
-      console.log("results =", results);
+      // console.log("HHW pool pairs =", results);
+      for (let i = 0; i < results.length; i++ ){
+        results[i].deposit = await ConnectionInstance.GetAccountDeposit(results[i] as Pair, account);
+        results[i].pendingReward = await ConnectionInstance.GetAccountPendingReward(results[i] as Pair, account);
+      };
+      setPairTasksLoading(false)
       setPairs(results as any)
     }
     fetchPairTasks()

@@ -136,12 +136,16 @@ const userSlice = createSlice({
       delete state.coins[chainId][address]
     },
     updatePair(state, { payload: { pair } }: { payload: { pair: Pair } }) {
+      if (!pair) 
+        return;
+      // console.log("HHW updatePair :", pair);
       const chainId = state.chainId
       state.pairs[chainId] = state.pairs[chainId] || {}
       state.pairs[chainId][pairKey(pair.coinX, pair.coinY)] = pair
     },
     setAllPairs(state, { payload: { pairs } }: { payload: { pairs: { [pairKey: string]: Pair } } }) {
       const chainId = state.chainId
+      console.log("HHW setAllPairs :", pairs);
       state.pairs[chainId] = pairs
     },
     removePair(state, { payload: { coinX, coinY } }: { payload: { coinX: string; coinY: string } }) {

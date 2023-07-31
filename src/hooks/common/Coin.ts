@@ -2,6 +2,7 @@ import { Decimal, Utils } from '@animeswap.org/v1-sdk'
 import ConnectionInstance from 'state/connection/instance'
 import { useAppSelector } from 'state/hooks'
 import { useChainId } from 'state/user/hooks'
+import { userAgent } from 'utils/userAgent'
 
 export interface Coin {
   address: string
@@ -89,6 +90,8 @@ export function useCoinList(): Coin[] {
 
 export function useCoinMap() {
   const chainId = useChainId()
+  console.log("HHW useCoinMap : ", chainId);
   const coinMap = useAppSelector((state) => state.user.coins[chainId])
+  console.log("HHW useCoinMap : ", coinMap);
   return coinMap
 }

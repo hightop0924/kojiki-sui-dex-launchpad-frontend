@@ -1,4 +1,7 @@
 import SuiSDK, { NetworkType as SuiNetworkType } from '@animeswap.org/sui-v1-sdk'
+import { Utils as SuiUtils } from '@animeswap.org/sui-v1-sdk'
+import { head, isEmpty, pathOr, propOr } from 'ramda';
+import { bcs } from '@mysten/sui.js';
 import SDK, {
   AptosCoinInfoResource,
   AptosCoinStoreResource,
@@ -10,9 +13,9 @@ import SDK, {
   SwapPoolResource,
   Utils,
 } from '@animeswap.org/v1-sdk'
-import { Connection, JsonRpcProvider } from '@mysten/sui.js'
+import { Connection, DevInspectResults, JsonRpcProvider } from '@mysten/sui.js'
 import { AptosClient } from 'aptos'
-import { CHAIN_INFO } from 'constants/chainInfo'
+import { CHAIN_INFO, MasterChef_Info } from 'constants/chainInfo'
 import {
   CHAIN_IDS_TO_SDK_NETWORK,
   isAptosChain,
@@ -23,15 +26,19 @@ import {
 import { Pair } from 'hooks/common/Pair'
 import store from 'state'
 import { addCoin, addTempCoin, setAllPairs, updatePair } from 'state/user/reducer'
-import { resetCoinBalances, resetLpBalances, setCoinBalances } from 'state/wallets/reducer'
+import { resetCoinBalances, resetLpBalances, setCoinBalances} from 'state/wallets/reducer'
 
 import { ConnectionType, getRPCURL } from './reducer'
+import { TransactionBlock } from '@mysten/sui.js'
+
 
 class ConnectionInstance {
   private static aptosClient: AptosClient
   private static sdk: SDK
   private static suiClient: JsonRpcProvider
   private static suiSDK: SuiSDK
+
+
 
   public static getAptosClient(): AptosClient {
     if (!ConnectionInstance.aptosClient) {
@@ -124,7 +131,7 @@ class ConnectionInstance {
         return undefined
       }
       console.log(`getCoinBalance ${account} ${type}`)
-      const coinStore = this.getSDK().networkOptions.modules.CoinStore
+      const coinStore = this.getSDK().networkOptions.modules.CoinStoref
       const res: AptosCoinStoreResource = await ConnectionInstance.getAccountResource(
         account,
         Utils.composeCoinStore(coinStore, type)
@@ -488,22 +495,25 @@ class ConnectionInstance {
       const res = await suiClient.getAllBalances({ owner: account })
       const coinBalances = {}
       const lpBalances = {}
-      
+      const xBalances = {}
+
       console.log("syncSuiAccountResources res =", res);
 
       for (const resource of res) {
         const type = resource.coinType
         coinBalances[type] = resource.totalBalance
         // LP balance filter
-        if (type.includes('kojikiswap::LPCoin<')) {
-          const parts = type.split('kojikiswap::LPCoin<')
+        if (type.includes(`${this.suiSDK.networkOptions.modules.SwapPackage}::kojikiswap::LPCoin<`)) {
+          const parts = type.split('::kojikiswap::LPCoin<')
           const [coinX, coinY] = parts[1].substring(0, parts[1].length - 1).split(', ')
+          // console.log("HHW Balance Coins:", coinX, coinY);
           lpBalances[`${coinX}, ${coinY}`] = resource.totalBalance
           if (poolPair) {
             this.getPair(chainId, coinX, coinY)
           }
         }
       }
+      // console.log("HHW LpBalances:", lpBalances);
       store.dispatch(resetCoinBalances({ coinBalances }))
       store.dispatch(resetLpBalances({ lpBalances }))
       return undefined
@@ -519,10 +529,10 @@ class ConnectionInstance {
       if (!account || !type) {
         return undefined
       }
-      console.log(`getSuiCoinBalance ${account} ${type}`)
+      // console.log(`HHW getSuiCoinBalance ${account} ${type}`)
       const suiClient = ConnectionInstance.getSuiClient()
       const res = await suiClient.getBalance({ owner: account, coinType: type })
-      console.log(`getSuiCoinBalance return`, res)
+      // console.log(`HHW getSuiCoinBalance return`, res)
       const amount = res.totalBalance
       store.dispatch(setCoinBalances({ coinBalances: { [type]: amount.toString() } }))
       return amount
@@ -535,6 +545,7 @@ class ConnectionInstance {
     try {
       if (!coinX || !coinY) return undefined
       const res = await this.getSuiSDK().swap.getLiquidityPool(coinX, coinY)
+      // console.log("HHW getSuiPair:", res);
       const pair: Pair = {
         coinX,
         coinY,
@@ -569,11 +580,381 @@ class ConnectionInstance {
           coinYReserve: resource.coinYReserve,
         }
       }
+      // console.log("HHW getAllSuiPairs:", pairs);
       return pairs
     } catch (error) {
       return {}
     }
   }
+
+  public static async getAccountInfo(account: String) {
+    const state = store.getState();
+    const master_chef = MasterChef_Info[state.user.chainId];
+
+    const txb = new TransactionBlock()
+    // const coinXIn = await (async () => {
+    //   if (isCoinEqual(coinX, coins.nativeCoin)) {
+    //     return txb.splitCoins(
+    //       txb.gas,
+    //       [txb.pure(amountX)],
+    //     )
+    //   } else {
+    //     const coinXIdList = await this.sdk.swap.getCoinsObjectIdList(address, coinX, amountX)
+    //     if (coinXIdList.length == 0) {
+    //       // tx should fail
+    //       return txb.pure(0)
+    //     } else if (coinXIdList.length == 1) {
+    //       return txb.object(coinXIdList[0])
+    //     } else {
+    //       txb.mergeCoins(
+    //         txb.object(coinXIdList[0]),
+    //         coinXIdList.splice(1).map(coinId => txb.object(coinId)),
+    //       )
+    //       return txb.object(coinXIdList[0])
+    //     }
+    //   }
+    // })()
+    // const coinYIn = await (async () => {
+    //   if (isCoinEqual(coinY, coins.nativeCoin)) {
+    //     return txb.splitCoins(
+    //       txb.gas,
+    //       [txb.pure(amountY)],
+    //     )
+    //   } else {
+    //     const coinYIdList = await this.sdk.swap.getCoinsObjectIdList(address, coinY, amountY)
+    //     if (coinYIdList.length == 0) {
+    //       // tx should fail
+    //       return txb.pure(0)
+    //     } else if (coinYIdList.length == 1) {
+    //       return txb.object(coinYIdList[0])
+    //     } else {
+    //       txb.mergeCoins(
+    //         txb.object(coinYIdList[0]),
+    //         coinYIdList.splice(1).map(coinId => txb.object(coinId)),
+    //       )
+    //       return txb.object(coinYIdList[0])
+    //     }
+    //   }
+    // })()
+    txb.moveCall({
+      target: `${master_chef.SwapPackage}::${master_chef.MasterchefModule}::get_account_info`,
+      arguments: [
+        txb.object(master_chef.MasterchefStorage),
+        txb.object(master_chef.ClockModule),
+        txb.pure(account),
+      ],
+      // HHW : TODO : typeArguments: typeArguments,
+    })
+    txb.setGasBudget(100000000)
+    return txb
+  }
+
+  public static async StakePayload(
+    pool: Pair,
+    amount: Decimal,
+    account: string
+  ): Promise<TransactionBlock> {
+    // Stack 
+    const state = store.getState();
+    const master_chef = MasterChef_Info[state.user.chainId];
+    const txb = new TransactionBlock();
+    console.log("HHW farming amount: ", amount);
+    // Get Lp coin address
+    const CoinLP = `${this.getSuiSDK().networkOptions.modules.SwapPackage}::${this.getSuiSDK().networkOptions.modules.SwapModule}::LPCoin<${pool.coinX},${pool.coinY}>`;
+
+    const coinLPIn = await (async () => {
+      if (SuiUtils.isCoinEqual(CoinLP, this.getSuiSDK().networkOptions.coins.nativeCoin)) {
+        return txb.splitCoins(
+          txb.gas,
+          [txb.pure(amount)],
+        )
+      } else {
+        const CoinLPIdList = await this.suiSDK.swap.getCoinsObjectIdList(account, CoinLP, amount)
+        if (CoinLPIdList.length == 0) {
+          // tx should fail
+          return txb.pure(0)
+        } else if (CoinLPIdList.length == 1) {
+          return txb.object(CoinLPIdList[0])
+        } else {
+          txb.mergeCoins(
+            txb.object(CoinLPIdList[0]),
+            CoinLPIdList.splice(1).map(coinId => txb.object(coinId)),
+          )
+          return txb.object(CoinLPIdList[0])
+        }
+      }
+    })()
+
+    txb.moveCall({
+      target: `${master_chef.SwapPackage}::${master_chef.MasterchefModule}::stake`,
+      arguments: [
+        txb.object(master_chef.MasterchefStorage),
+        txb.object(master_chef.AccountStorage),
+        txb.object(master_chef.SakeStorage),
+        txb.object(master_chef.ClockModule),
+        coinLPIn,
+        txb.pure(amount)
+      ],
+      typeArguments: [
+        CoinLP
+      ]
+    });
+    txb.setGasBudget(500000000)
+    return txb
+  }
+
+  public static async UnstakePayload(
+    pool: Pair, 
+    amount: Decimal, 
+    account: string
+  ) : Promise<TransactionBlock> {
+    // Stack 
+    const state = store.getState();
+    const master_chef = MasterChef_Info[state.user.chainId];
+    const txb = new TransactionBlock();
+    // Get LPCoin
+    console.log("HHW unstaking amount: ", amount);
+    const CoinLP = `${this.getSuiSDK().networkOptions.modules.SwapPackage}::${this.getSuiSDK().networkOptions.modules.SwapModule}::LPCoin<${pool.coinX},${pool.coinY}>`;
+    
+    txb.moveCall({
+      target: `${master_chef.SwapPackage}::${master_chef.MasterchefModule}::unstake`,
+      arguments: [
+        txb.object(master_chef.MasterchefStorage),
+        txb.object(master_chef.AccountStorage),
+        txb.object(master_chef.SakeStorage),
+        txb.object(master_chef.ClockModule),
+        txb.pure(amount)
+      ],
+      typeArguments: [
+        CoinLP
+      ]
+    });
+    txb.setGasBudget(500000000)
+    return txb
+  }
+
+  public static async GetAccountDeposit(pool: Pair, account: string) {
+    try {
+      // Stack 
+      const state = store.getState();
+      const master_chef = MasterChef_Info[state.user.chainId];
+      const txb = new TransactionBlock();
+      // Get LPCoin
+      const CoinLP = `${this.getSuiSDK().networkOptions.modules.SwapPackage}::${this.getSuiSDK().networkOptions.modules.SwapModule}::LPCoin<${pool.coinX},${pool.coinY}>`;
+
+      txb.moveCall({
+        target: `${master_chef.SwapPackage}::${master_chef.MasterchefModule}::get_account_info`,
+        arguments: [
+          txb.object(master_chef.MasterchefStorage),
+          txb.object(master_chef.AccountStorage),
+          txb.pure(account),
+        ],
+        typeArguments: [
+          CoinLP
+        ]
+      });
+      // txb.setGasBudget(100000000)
+      const result = await this.getSuiClient().devInspectTransactionBlock({
+        transactionBlock: txb,
+        sender: account || '0x0000000000000000000000000000000000000000000000000000000000000000',
+      });
+
+      const returnValues = getReturnValuesFromInspectResults(result);
+
+      if (!returnValues || !returnValues.length) return [];
+
+      return bcs.de(returnValues[0][1], Uint8Array.from(returnValues[0][0]));
+    } catch (error) {
+      console.error("GetAccountDeposit error:", error);
+      return 0;
+    }
+  }
+
+  public static async GetAccountPendingReward(pool: Pair, account: string) {
+    try {
+      // Stack 
+      const state = store.getState();
+      const master_chef = MasterChef_Info[state.user.chainId];
+      const txb = new TransactionBlock();
+      // Get LPCoin
+      const CoinLP = `${this.getSuiSDK().networkOptions.modules.SwapPackage}::${this.getSuiSDK().networkOptions.modules.SwapModule}::LPCoin<${pool.coinX},${pool.coinY}>`;
+      
+      txb.moveCall({
+        target: `${master_chef.SwapPackage}::${master_chef.MasterchefModule}::get_pending_rewards`,
+        arguments: [
+          txb.object(master_chef.MasterchefStorage),
+          txb.object(master_chef.AccountStorage),
+          txb.object(master_chef.ClockModule),
+          txb.pure(account),
+        ],
+        typeArguments: [
+          CoinLP
+        ]
+      });
+
+      const result = await this.getSuiClient().devInspectTransactionBlock({
+        transactionBlock: txb,
+        sender: account || '0x0000000000000000000000000000000000000000000000000000000000000000',
+      });
+      
+      const returnValues = getReturnValuesFromInspectResults(result);
+
+      if (!returnValues || !returnValues.length) return [];
+      return bcs.de(returnValues[0][1], Uint8Array.from(returnValues[0][0]));
+    } catch (error) {
+      console.error(error);
+      return 0;
+    }
+  }
+
+  public static async GetXSakeValue(account: string,) {
+    try {
+      // Stack 
+      const state = store.getState();
+      const master_chef = MasterChef_Info[state.user.chainId];
+      const txb = new TransactionBlock();
+      
+      txb.moveCall({
+        target: `${master_chef.SakePackage}::${master_chef.XSakeModule}::total_supply`,
+        arguments: [
+          txb.object(master_chef.XSakeStorage),
+        ]
+      });
+
+      const result = await this.getSuiClient().devInspectTransactionBlock({
+        transactionBlock: txb,
+        sender: account || '0x0000000000000000000000000000000000000000000000000000000000000000',
+      });
+      
+      const returnValues = getReturnValuesFromInspectResults(result);
+
+      if (!returnValues || !returnValues.length) return [];
+      return bcs.de(returnValues[0][1], Uint8Array.from(returnValues[0][0]));
+    } catch (error) {
+      console.error(error);
+      return 0;
+    }
+  } 
+
+  public static GetXSakeTokenName() {
+    const state = store.getState();
+    const master_chef = MasterChef_Info[state.user.chainId];
+    return `${master_chef.SakePackage}::${master_chef.XSakeModule}::XSAKE`;
+  }
+
+  public static GetSakeTokenName() {
+    const state = store.getState();
+    const master_chef = MasterChef_Info[state.user.chainId];
+    return `${master_chef.SakePackage}::${master_chef.SakeModule}::SAKE`;
+  }
+
+  public static async Convert2XSakePayload(amount : Decimal, account: string) : Promise<TransactionBlock> {
+    const txb = new TransactionBlock();
+    try {
+      // Stack 
+      const state = store.getState();
+      const master_chef = MasterChef_Info[state.user.chainId];
+
+      const coinXSake = this.GetSakeTokenName();
+
+      const coinXSakeIn = await (async () => {
+        if (SuiUtils.isCoinEqual(coinXSake, this.getSuiSDK().networkOptions.coins.nativeCoin)) {
+          return txb.splitCoins(
+            txb.gas,
+            [txb.pure(amount)],
+          )
+        } else {
+          const coinSakeIdList = await this.suiSDK.swap.getCoinsObjectIdList(account, coinXSake, amount)
+          if (coinSakeIdList.length == 0) {
+            // tx should fail
+            return txb.pure(0)
+          } else if (coinSakeIdList.length == 1) {
+            return txb.object(coinSakeIdList[0])
+          } else {
+            txb.mergeCoins(
+              txb.object(coinSakeIdList[0]),
+              coinSakeIdList.splice(1).map(coinId => txb.object(coinId)),
+            )
+            return txb.object(coinSakeIdList[0])
+          }
+        }
+      })()
+
+      txb.moveCall({
+        target: `${master_chef.SakePackage}::${master_chef.XSakeModule}::convert_from_sake`,
+        arguments: [
+          txb.object(master_chef.XSakeStorage),
+          coinXSakeIn, 
+          txb.pure(amount), 
+        ]
+      });
+    } catch (error) {
+      console.error(error);
+    }
+    return txb;
+  }
+
+  public static async Convert2SakePayload(amount : Decimal, account: string) : Promise<TransactionBlock> {
+    const txb = new TransactionBlock();
+    try {
+      // Stack 
+      const state = store.getState();
+      const master_chef = MasterChef_Info[state.user.chainId];
+
+      const coinXSake = this.GetXSakeTokenName();
+
+      const coinXSakeIn = await (async () => {
+        if (SuiUtils.isCoinEqual(coinXSake, this.getSuiSDK().networkOptions.coins.nativeCoin)) {
+          return txb.splitCoins(
+            txb.gas,
+            [txb.pure(amount)],
+          )
+        } else {
+          const coinSakeIdList = await this.suiSDK.swap.getCoinsObjectIdList(account, coinXSake, amount)
+          if (coinSakeIdList.length == 0) {
+            // tx should fail
+            return txb.pure(0)
+          } else if (coinSakeIdList.length == 1) {
+            return txb.object(coinSakeIdList[0])
+          } else {
+            txb.mergeCoins(
+              txb.object(coinSakeIdList[0]),
+              coinSakeIdList.splice(1).map(coinId => txb.object(coinId)),
+            )
+            return txb.object(coinSakeIdList[0])
+          }
+        }
+      })()
+
+      txb.moveCall({
+        target: `${master_chef.SakePackage}::${master_chef.XSakeModule}::convert_to_sake`,
+        arguments: [
+          txb.object(master_chef.XSakeStorage),
+          coinXSakeIn, 
+          txb.pure(amount), 
+        ]
+      });
+    } catch (error) {
+      console.error(error);
+    }
+    return txb;
+  }
 }
+
+const getReturnValuesFromInspectResults = (
+  x: DevInspectResults,
+): Array<[number[], string]> | null => {
+  const results = propOr([], 'results', x) as DevInspectResults['results'];
+
+  if (!results?.length) return null;
+
+  const firstElem = head(results);
+
+  if (!firstElem) return null;
+
+  const returnValues = firstElem?.returnValues;
+
+  return returnValues ? returnValues : null;
+};
 
 export default ConnectionInstance

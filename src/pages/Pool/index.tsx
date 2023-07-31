@@ -93,23 +93,27 @@ export default function Pool() {
   const showFarm = isAptosChain(chainId)
 
   const pairKeyNotZero: string[] = []
+  // console.log("HHW allLpBalances : ", allLpBalances);
   for (const pairKey in allLpBalances) {
-    if (allLpBalances[pairKey] !== '0') {
-      pairKeyNotZero.push(pairKey)
-    }
+    // if (allLpBalances[pairKey] !== '0') {
+       pairKeyNotZero.push(pairKey)
+    // }
   }
 
   // your LP
   useEffect(() => {
     const fetchPairTasks = async () => {
       const pairTasksPromise: Promise<Pair>[] = []
+      // console.log("HHW pairKeyNotZero:", pairKeyNotZero);
       for (const pairKey of pairKeyNotZero) {
         const [coinX, coinY] = pairKey.split(', ')
         if (!coinX || !coinY) continue
+        if (coinX == undefined || coinY == undefined) continue
         pairTasksPromise.push(ConnectionInstance.getPair(chainId, coinX, coinY))
       }
       const pairResults = await Promise.all(pairTasksPromise)
       setPairTasksLoading(false)
+      // console.log("HHW fetchPairs:", pairResults);
       setPairs(pairResults)
     }
     fetchPairTasks()

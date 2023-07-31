@@ -1,5 +1,6 @@
 import { Utils } from '@animeswap.org/v1-sdk'
 import { getChainInfoOrDefault } from 'constants/chainInfo'
+import store from 'state'
 import ConnectionInstance from 'state/connection/instance'
 import { useAppSelector } from 'state/hooks'
 import { useChainId } from 'state/user/hooks'
@@ -11,6 +12,8 @@ export interface Pair {
   coinXReserve: string
   coinYReserve: string
   APR?: number
+  deposit?: number
+  pendingReward?: number
 }
 
 export enum PairState {
@@ -26,6 +29,8 @@ export function pairKey(coinXAddress: string, coinYAddress: string) {
 
 export function usePair(coinA: string, coinB: string): [PairState, Pair | null | undefined] {
   const chainId = useChainId()
+  const state = store.getState();
+  // console.log("HHW usePair : ", state.user.pairs);
   const pair = useAppSelector(
     (state) => state.user.pairs[chainId][pairKey(coinA, coinB)] || state.user.pairs[chainId][pairKey(coinB, coinA)]
   )
@@ -36,6 +41,7 @@ export function usePair(coinA: string, coinB: string): [PairState, Pair | null |
   if (pair) {
     pairState = PairState.EXISTS
   }
+  // console.log("HHW usePair:", pair);
   return [pairState, pair]
 }
 

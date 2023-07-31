@@ -120,10 +120,14 @@ export function CoinSearch({
       ConnectionInstance.addCoin(debouncedQuery, chainId)
     }
   }
-
+  
+  const allCoinbalance = useAllCoinBalance()
   const filteredTokens: Coin[] = useMemo(() => {
     return Object.values(allCoins).filter((coin: Coin) => {
       const searchingAddress = isCoinAddress(debouncedQuery)
+      if (allCoinbalance[coin.address] === '0' || !allCoinbalance[coin.address])  {
+        return false;
+      }
       if (searchingAddress) {
         const address = searchingAddress.toLowerCase()
         return address === coin.address.toLowerCase()
@@ -141,11 +145,10 @@ export function CoinSearch({
           .filter((s) => s.length > 0)
         return queryParts.every((p) => p.length === 0 || parts.some((sp) => sp.startsWith(p) || sp.endsWith(p)))
       }
-      return match(coin.symbol) || match(coin.name)
+      return (match(coin.symbol) || match(coin.name)) 
     })
   }, [allCoins, debouncedQuery])
 
-  const allCoinbalance = useAllCoinBalance()
   const sortedTokens: Coin[] = useMemo(
     () =>
       [...filteredTokens].sort((coinA, coinB) => {

@@ -32,7 +32,7 @@ export const SUI_CHAIN_IDS_TO_SDK_NETWORK = {
 }
 
 export function isSupportedChain(chainId: number | undefined): chainId is SupportedChainId {
-  return !!chainId && !!SupportedChainId[chainId] && (chainId === SupportedChainId.SUI || chainId === SupportedChainId.SUI_TESTNET)
+  return !!chainId && !!SupportedChainId[chainId] && (chainId === SupportedChainId.SUI || chainId === SupportedChainId.SUI_TESTNET || chainId === SupportedChainId.SUI_DEVNET)
 }
 
 export function isAptosChain(chainId: number | undefined): chainId is SupportedChainId {

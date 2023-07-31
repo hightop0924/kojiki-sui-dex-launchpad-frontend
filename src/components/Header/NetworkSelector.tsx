@@ -281,7 +281,7 @@ if (isDevelopmentEnv()) {
 // NETWORK_SELECTOR_CHAINS.push(SupportedChainId.SUI_DEVNET)
 NETWORK_SELECTOR_CHAINS.push(SupportedChainId.SUI_TESTNET)
 */
-const NETWORK_SELECTOR_CHAINS = [SupportedChainId.SUI_TESTNET, SupportedChainId.SUI]
+const NETWORK_SELECTOR_CHAINS = [SupportedChainId.SUI_DEVNET, SupportedChainId.SUI_TESTNET, SupportedChainId.SUI]
 
 export default function NetworkSelector() {
   const dispatch = useAppDispatch()
