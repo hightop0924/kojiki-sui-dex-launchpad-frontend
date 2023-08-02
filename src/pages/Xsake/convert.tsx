@@ -58,7 +58,7 @@ const TabConvert: FC<ConvertProps> = ({
             setInputError({ error: true, message: 'Too much xSAKE requested!' });
             return;
         }
-        let payload = await ConnectionInstance.Convert2XSakePayload(SuiUtils.d(inputValue).mul(SuiUtils.pow10(8)), account);
+        let payload = await ConnectionInstance.Convert2XSakePayload(SuiUtils.d(inputValue).mul(SuiUtils.pow10(9)), account);
         console.log("HHW xsake payload:", payload);
         let _txId = await SignAndSubmitSuiTransaction(chainId, payload, signAndExecuteTransactionBlock)
     }

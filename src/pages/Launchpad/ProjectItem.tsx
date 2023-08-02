@@ -12,8 +12,8 @@ import { formatAmount } from 'utils/formatDollarAmt'
 import { useNavigate } from 'react-router-dom'
 
 export enum Status {
-  STARTED = 0,
-  ENDED = 2
+  STARTED = 1,
+  ENDED = 7
 };
 
 export interface ProjectItemProps {
@@ -67,7 +67,7 @@ export default function ProjectItem({
   paymentCoin,
   isHardcapReached = false,
   isWLStage = false,
-  status = 0,
+  status = Status.STARTED,
   raisedAmount = 0
 }: ProjectItemProps) {
 
@@ -82,7 +82,7 @@ export default function ProjectItem({
   const [pairs, setPairs] = useState<Pair[]>([])
 
   const onClickProjectItem = () => {
-    navigate('/launchpad/' + projectCoinAddress);
+    navigate('/launchpad/' + projectCoin);
   }
 
   return (
@@ -111,7 +111,7 @@ export default function ProjectItem({
         </ResponsiveRow>
         <Row style={{ width: "16.6%", justifyContent: "center" }}>
           <Text fontWeight={400} fontSize={14}>
-            {status == 0? <BlueSpan>STARTED</BlueSpan> : <RedSpan>ENDED</RedSpan>}
+            {status == Status.ENDED ? <RedSpan>ENDED</RedSpan> : (status >= Status.STARTED ? <BlueSpan>STARTED</BlueSpan> : <BlueSpan>UNKNOWN</BlueSpan>)}
           </Text>
         </Row>
         <Row style={{ width: "16.6%", justifyContent: "center" }}>

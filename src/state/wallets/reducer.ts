@@ -8,6 +8,7 @@ export interface WalletState {
   account: string
   coinBalances: { [address: string]: string }
   lpBalances: { [address: string]: string } // `${coin0.address}, ${coin1.address}`
+  projects: { [token: string]: any }
   selectedWallet: WalletType
   walletChain: SupportedChainId
   connectedWallets: Wallet[]
@@ -17,6 +18,7 @@ export const initialState: WalletState = {
   account: undefined,
   coinBalances: {},
   lpBalances: {},
+  projects: {},
   selectedWallet: WalletType.MARTIAN,
   walletChain: SupportedChainId.APTOS,
   connectedWallets: [],
@@ -37,6 +39,9 @@ const walletsSlice = createSlice({
     },
     setLpBalances(state, { payload }: { payload: { lpBalances: { [address: string]: string } } }) {
       state.lpBalances = { ...state.lpBalances, ...payload.lpBalances }
+    },
+    setProjects(state, { payload }: { payload: { projects: { [token: string]: any } } }) {
+      state.projects = payload.projects
     },
     resetLpBalances(state, { payload }: { payload: { lpBalances: { [address: string]: string } } }) {
       state.lpBalances = payload.lpBalances
@@ -65,6 +70,7 @@ export const {
   resetCoinBalances,
   setLpBalances,
   resetLpBalances,
+  setProjects,
   setSelectedWallet,
   setWalletChain,
   addConnectedWallet,

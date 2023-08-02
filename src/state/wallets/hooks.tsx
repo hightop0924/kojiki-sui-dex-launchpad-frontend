@@ -32,6 +32,10 @@ export function useAllLpBalance(): { [pairKey: string]: string } {
   return useAppSelector((state) => state.wallets.lpBalances)
 }
 
+export function useProjects(): { [token: string]: any } {
+  return useAppSelector((state) => state.wallets.projects)
+}
+
 export function useAccount(): string | undefined {
   return useAppSelector((state) => state.wallets.account)
 }

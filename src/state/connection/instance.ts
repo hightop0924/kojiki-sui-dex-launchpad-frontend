@@ -1,7 +1,7 @@
 import SuiSDK, { NetworkType as SuiNetworkType } from '@animeswap.org/sui-v1-sdk'
 import { Utils as SuiUtils } from '@animeswap.org/sui-v1-sdk'
 import { head, isEmpty, pathOr, propOr } from 'ramda';
-import { bcs } from '@mysten/sui.js';
+import { bcs, ObjectContentFields, SuiMoveObject, SuiObjectData, SuiObjectDataOptions, SuiObjectDataWithContent, SuiObjectResponse } from '@mysten/sui.js';
 import SDK, {
   AptosCoinInfoResource,
   AptosCoinStoreResource,
@@ -26,12 +26,74 @@ import {
 import { Pair } from 'hooks/common/Pair'
 import store from 'state'
 import { addCoin, addTempCoin, setAllPairs, updatePair } from 'state/user/reducer'
-import { resetCoinBalances, resetLpBalances, setCoinBalances} from 'state/wallets/reducer'
+import { resetCoinBalances, resetLpBalances, setCoinBalances, setProjects } from 'state/wallets/reducer'
 
 import { ConnectionType, getRPCURL } from './reducer'
 import { TransactionBlock } from '@mysten/sui.js'
+import { DynamicFieldPage } from '@mysten/sui.js/dist/types/dynamic_fields';
 
+import {
+  boolean,
+  define,
+  Infer,
+  literal,
+  nullable,
+  number,
+  object,
+  record,
+  string,
+  union,
+} from 'superstruct';
 
+import { ROUND_PRIVATE } from 'pages/Launchpad';
+
+export type ProjectDataWrapper = {
+  type: string,
+  fields: {
+    tokenIconUrl: string,
+    tokenName: string,
+    tokenAddress: string,
+    coinName: string,
+    coinAddress: string,
+    isHardcapReached: boolean,
+    isWLStage: boolean,
+    status: number,
+    raisedAmount: number,
+    allocation: number
+  }
+};
+
+export type ProjectData = {
+  id: string,
+  tokenIconUrl: string,
+  tokenName: string,
+  tokenAddress: string,
+  coinName: string,
+  coinAddress: string,
+  isHardcapReached: boolean,
+  isWLStage: boolean,
+  status: number,
+  raisedAmount: number,
+  allocation: number
+}
+
+export type SuiStructTag = {
+  full_address: string
+  source_address: string
+  address: string
+  module: string
+  name: string
+  type_arguments: string[]
+}
+
+export const ObjectId = string();
+export type ObjectId = Infer<typeof ObjectId>;
+export const GAS_TYPE_ARG = '0x2::sui::SUI';
+
+export const SuiAddress = string();
+export type SuiAddress = Infer<typeof SuiAddress>;
+
+const SUI_ADDRESS_LENGTH = 32;
 class ConnectionInstance {
   private static aptosClient: AptosClient
   private static sdk: SDK
@@ -587,68 +649,6 @@ class ConnectionInstance {
     }
   }
 
-  public static async getAccountInfo(account: String) {
-    const state = store.getState();
-    const master_chef = MasterChef_Info[state.user.chainId];
-
-    const txb = new TransactionBlock()
-    // const coinXIn = await (async () => {
-    //   if (isCoinEqual(coinX, coins.nativeCoin)) {
-    //     return txb.splitCoins(
-    //       txb.gas,
-    //       [txb.pure(amountX)],
-    //     )
-    //   } else {
-    //     const coinXIdList = await this.sdk.swap.getCoinsObjectIdList(address, coinX, amountX)
-    //     if (coinXIdList.length == 0) {
-    //       // tx should fail
-    //       return txb.pure(0)
-    //     } else if (coinXIdList.length == 1) {
-    //       return txb.object(coinXIdList[0])
-    //     } else {
-    //       txb.mergeCoins(
-    //         txb.object(coinXIdList[0]),
-    //         coinXIdList.splice(1).map(coinId => txb.object(coinId)),
-    //       )
-    //       return txb.object(coinXIdList[0])
-    //     }
-    //   }
-    // })()
-    // const coinYIn = await (async () => {
-    //   if (isCoinEqual(coinY, coins.nativeCoin)) {
-    //     return txb.splitCoins(
-    //       txb.gas,
-    //       [txb.pure(amountY)],
-    //     )
-    //   } else {
-    //     const coinYIdList = await this.sdk.swap.getCoinsObjectIdList(address, coinY, amountY)
-    //     if (coinYIdList.length == 0) {
-    //       // tx should fail
-    //       return txb.pure(0)
-    //     } else if (coinYIdList.length == 1) {
-    //       return txb.object(coinYIdList[0])
-    //     } else {
-    //       txb.mergeCoins(
-    //         txb.object(coinYIdList[0]),
-    //         coinYIdList.splice(1).map(coinId => txb.object(coinId)),
-    //       )
-    //       return txb.object(coinYIdList[0])
-    //     }
-    //   }
-    // })()
-    txb.moveCall({
-      target: `${master_chef.SwapPackage}::${master_chef.MasterchefModule}::get_account_info`,
-      arguments: [
-        txb.object(master_chef.MasterchefStorage),
-        txb.object(master_chef.ClockModule),
-        txb.pure(account),
-      ],
-      // HHW : TODO : typeArguments: typeArguments,
-    })
-    txb.setGasBudget(100000000)
-    return txb
-  }
-
   public static async StakePayload(
     pool: Pair,
     amount: Decimal,
@@ -704,10 +704,10 @@ class ConnectionInstance {
   }
 
   public static async UnstakePayload(
-    pool: Pair, 
-    amount: Decimal, 
+    pool: Pair,
+    amount: Decimal,
     account: string
-  ) : Promise<TransactionBlock> {
+  ): Promise<TransactionBlock> {
     // Stack 
     const state = store.getState();
     const master_chef = MasterChef_Info[state.user.chainId];
@@ -715,7 +715,7 @@ class ConnectionInstance {
     // Get LPCoin
     console.log("HHW unstaking amount: ", amount);
     const CoinLP = `${this.getSuiSDK().networkOptions.modules.SwapPackage}::${this.getSuiSDK().networkOptions.modules.SwapModule}::LPCoin<${pool.coinX},${pool.coinY}>`;
-    
+
     txb.moveCall({
       target: `${master_chef.SwapPackage}::${master_chef.MasterchefModule}::unstake`,
       arguments: [
@@ -778,7 +778,7 @@ class ConnectionInstance {
       const txb = new TransactionBlock();
       // Get LPCoin
       const CoinLP = `${this.getSuiSDK().networkOptions.modules.SwapPackage}::${this.getSuiSDK().networkOptions.modules.SwapModule}::LPCoin<${pool.coinX},${pool.coinY}>`;
-      
+
       txb.moveCall({
         target: `${master_chef.SwapPackage}::${master_chef.MasterchefModule}::get_pending_rewards`,
         arguments: [
@@ -796,7 +796,7 @@ class ConnectionInstance {
         transactionBlock: txb,
         sender: account || '0x0000000000000000000000000000000000000000000000000000000000000000',
       });
-      
+
       const returnValues = getReturnValuesFromInspectResults(result);
 
       if (!returnValues || !returnValues.length) return [];
@@ -813,7 +813,7 @@ class ConnectionInstance {
       const state = store.getState();
       const master_chef = MasterChef_Info[state.user.chainId];
       const txb = new TransactionBlock();
-      
+
       txb.moveCall({
         target: `${master_chef.SakePackage}::${master_chef.XSakeModule}::total_supply`,
         arguments: [
@@ -825,7 +825,7 @@ class ConnectionInstance {
         transactionBlock: txb,
         sender: account || '0x0000000000000000000000000000000000000000000000000000000000000000',
       });
-      
+
       const returnValues = getReturnValuesFromInspectResults(result);
 
       if (!returnValues || !returnValues.length) return [];
@@ -834,7 +834,7 @@ class ConnectionInstance {
       console.error(error);
       return 0;
     }
-  } 
+  }
 
   public static GetXSakeTokenName() {
     const state = store.getState();
@@ -848,7 +848,90 @@ class ConnectionInstance {
     return `${master_chef.SakePackage}::${master_chef.SakeModule}::SAKE`;
   }
 
-  public static async Convert2XSakePayload(amount : Decimal, account: string) : Promise<TransactionBlock> {
+  
+  public static async BuyTokenPayload(amount: Decimal, account: string, tokenaddr: string, projectId: string): Promise<TransactionBlock> {
+    const txb = new TransactionBlock();
+    try {
+      // Stack 
+      const state = store.getState();
+      const master_chef = MasterChef_Info[state.user.chainId];
+
+      const coinSui = this.getSuiSDK().networkOptions.coins.nativeCoin;
+
+      const coinSuiIn = await (async () => {
+        if (SuiUtils.isCoinEqual(coinSui, this.getSuiSDK().networkOptions.coins.nativeCoin)) {
+          return txb.splitCoins(
+            txb.gas,
+            [txb.pure(amount)],
+          )
+        } else {
+          const coinSakeIdList = await this.suiSDK.swap.getCoinsObjectIdList(account, coinSui, amount)
+          if (coinSakeIdList.length == 0) {
+            // tx should fail
+            return txb.pure(0)
+          } else if (coinSakeIdList.length == 1) {
+            return txb.object(coinSakeIdList[0])
+          } else {
+            txb.mergeCoins(
+              txb.object(coinSakeIdList[0]),
+              coinSakeIdList.splice(1).map(coinId => txb.object(coinId)),
+            )
+            return txb.object(coinSakeIdList[0])
+          }
+        }
+      })()
+
+    console.log("HHW BuyTokenPayload:", amount, master_chef.LaunchpadProjectBank, master_chef.ClockModule,
+    master_chef.LaunchpadKyc, master_chef.LaunchpadVersion);
+    txb.moveCall({
+        target: `${master_chef.LaunchpadPackage}::${master_chef.LaunchpadModule}::buy`,
+        arguments: [
+          coinSuiIn,
+          txb.pure(amount),
+          txb.object(master_chef.LaunchpadProjectBank),
+          txb.object(master_chef.ClockModule),
+          txb.object(master_chef.LaunchpadKyc),
+          txb.object(master_chef.LaunchpadVersion)
+      ],
+        typeArguments: [
+          this.getSuiSDK().networkOptions.coins.nativeCoin,
+          tokenaddr
+        ]
+      });
+    } catch (error) {
+      console.error(error);
+    }
+    return txb;
+  }
+
+  public static async ClaimTokenPayload(tokenaddr: string, projectId: string): Promise<TransactionBlock> {
+    const txb = new TransactionBlock();
+    try {
+      // Stack 
+      const state = store.getState();
+      const master_chef = MasterChef_Info[state.user.chainId];
+
+      const coinSui = this.getSuiSDK().networkOptions.coins.nativeCoin;
+
+      txb.moveCall({
+        target: `${master_chef.LaunchpadPackage}::${master_chef.LaunchpadModule}::buy`,
+        arguments: [
+          txb.object(projectId),
+          txb.object(master_chef.ClockModule),
+          txb.object(master_chef.LaunchpadVersion)
+      ],
+        typeArguments: [
+          this.getSuiSDK().networkOptions.coins.nativeCoin,
+          tokenaddr
+        ]
+      });
+    } catch (error) {
+      console.error(error);
+    }
+    return txb;
+  }  
+
+  public static async Convert2XSakePayload(amount: Decimal, account: string): Promise<TransactionBlock> {
     const txb = new TransactionBlock();
     try {
       // Stack 
@@ -884,8 +967,8 @@ class ConnectionInstance {
         target: `${master_chef.SakePackage}::${master_chef.XSakeModule}::convert_from_sake`,
         arguments: [
           txb.object(master_chef.XSakeStorage),
-          coinXSakeIn, 
-          txb.pure(amount), 
+          coinXSakeIn,
+          txb.pure(amount),
         ]
       });
     } catch (error) {
@@ -894,7 +977,7 @@ class ConnectionInstance {
     return txb;
   }
 
-  public static async Convert2SakePayload(amount : Decimal, account: string) : Promise<TransactionBlock> {
+  public static async Convert2SakePayload(amount: Decimal, account: string): Promise<TransactionBlock> {
     const txb = new TransactionBlock();
     try {
       // Stack 
@@ -930,14 +1013,176 @@ class ConnectionInstance {
         target: `${master_chef.SakePackage}::${master_chef.XSakeModule}::convert_to_sake`,
         arguments: [
           txb.object(master_chef.XSakeStorage),
-          coinXSakeIn, 
-          txb.pure(amount), 
+          coinXSakeIn,
+          txb.pure(amount),
         ]
       });
     } catch (error) {
       console.error(error);
     }
     return txb;
+  }
+
+  public static async CreateProjectPayload(account: string): Promise<TransactionBlock> {
+    const txb = new TransactionBlock();
+    try {
+      // Stack 
+      // const state = store.getState();
+      // const master_chef = MasterChef_Info[state.user.chainId];
+
+      // txb.moveCall({
+      //   target: `${master_chef.LaunchpadPackage}::${master_chef.LaunchpadModule}::create_project`,
+      //   arguments: [
+      //     txb.object(master_chef.XSakeStorage),
+      //     coinXSakeIn,
+      //     txb.pure(amount),
+      //   ]
+      // });
+    } catch (error) {
+      console.error(error);
+    }
+    return txb;
+  }
+
+  public static async GetLaunchpadProjectDatas() {
+    try {
+      const state = store.getState();
+      const master_chef = MasterChef_Info[state.user.chainId];
+      const objectDataResponse = await this.getSuiSDK().client.getObject({
+        id: master_chef.LaunchpadProjectBank,
+        options: {
+          showContent: true,
+        },
+      })
+      const details = objectDataResponse.data?.content as unknown as any
+      const ProjectDataWrappers: Array<ProjectDataWrapper> = details.fields.projects
+      const projects: Array<ProjectData> = ProjectDataWrappers.map(data => {
+        return {
+          id: "",
+          tokenIconUrl: data.fields.tokenIconUrl,
+          tokenName: data.fields.tokenName,
+          tokenAddress: data.fields.tokenAddress,
+          coinName: data.fields.coinName,
+          coinAddress: data.fields.coinAddress,
+          isHardcapReached: data.fields.isHardcapReached,
+          isWLStage: data.fields.isWLStage,
+          status: data.fields.status,
+          raisedAmount: data.fields.raisedAmount,
+          allocation: data.fields.allocation
+        }
+      })
+      return projects
+    } catch (error) {
+      console.error("GetLaunchpadProjects Error:", error);
+      return []
+    }
+  }
+
+  public static async multiGetObjects(ids: string[], options?: SuiObjectDataOptions, limit = 50): Promise<any[]> {
+    let objectDataResponses: any[] = []
+
+    try {
+      for (let i = 0; i < Math.ceil(ids.length / limit); i++) {
+        const res = await this.getSuiSDK().client.multiGetObjects({
+          ids: ids.slice(i * limit, limit * (i + 1)),
+          options,
+        })
+        objectDataResponses = [...objectDataResponses, ...res]
+      }
+    } catch (error) {
+      console.log(error)
+    }
+
+    return objectDataResponses
+  }
+
+  public static getSuiObjectData(resp: SuiObjectResponse): SuiObjectData | undefined {
+    return resp.data;
+  }
+
+  public static isSuiObjectDataWithContent(data: SuiObjectData): data is SuiObjectDataWithContent {
+    return data.content !== undefined;
+  }
+
+  public static getMoveObject(data: SuiObjectResponse | SuiObjectData): SuiMoveObject | undefined {
+    const suiObject = 'data' in data ? this.getSuiObjectData(data) : (data as SuiObjectData);
+
+    if (
+      !suiObject ||
+      !this.isSuiObjectDataWithContent(suiObject) ||
+      suiObject.content.dataType !== 'moveObject'
+    ) {
+      return undefined;
+    }
+
+    return suiObject.content as SuiMoveObject;
+  }
+
+  public static getObjectFields(
+    resp: SuiObjectResponse | SuiMoveObject | SuiObjectData,
+  ): ObjectContentFields | undefined {
+    if ('fields' in resp) {
+      return resp.fields;
+    }
+    return this.getMoveObject(resp)?.fields;
+  }
+
+  public static async GetLaunchpadProjects() {
+    try {
+      const state = store.getState();
+      const master_chef = MasterChef_Info[state.user.chainId];
+
+      let hasNextPage = true
+      let result: any = []
+      let nextCursor = null
+
+      do {
+        const res: DynamicFieldPage = await this.getSuiSDK().client.getDynamicFields({
+          parentId: master_chef.LaunchpadProjectBank,
+          cursor: nextCursor,
+          limit: null,
+        })
+
+        if (res.data) {
+          result = [...result, ...res.data]
+          hasNextPage = res.hasNextPage
+          nextCursor = res.nextCursor
+        } else {
+          hasNextPage = false
+        }
+      } while (hasNextPage)
+
+      const projectIds = result.map((item) => {
+        return item.objectId
+      })
+
+      const objects = await this.multiGetObjects(projectIds, { showContent: true })
+      const projects: {[token: string]: any} = {};
+      objects.forEach((object) => {
+        let fields = this.getObjectFields(object) as ObjectContentFields
+        // const project: ProjectData = { 
+        //   id: fields.id,
+        //   tokenIconUrl: "https://s2.coinmarketcap.com/static/img/coins/64x64/25051.png",
+        //   tokenName: fields.token_name,
+        //   tokenAddress: fields.token_addr,
+        //   coinName: fields.coin_name,
+        //   coinAddress: fields.coin_addr,
+        //   isHardcapReached: false,
+        //   isWLStage: fields.launch_state.fields.round == ROUND_PRIVATE,
+        //   status: fields.launch_state.fields.state,
+        //   raisedAmount: fields.launch_state.fields.coin_raised.fields.balance,
+        //   allocation: fields.allocation
+        // }
+        projects[fields.token_name] = fields;
+      })
+
+      // console.log("HHW Projects:", projects);
+      store.dispatch(setProjects({projects}));
+      return projects;
+    } catch (error) {
+      console.error("GetLaunchpadProjects Error:", error);
+      return {}
+    }
   }
 }
 

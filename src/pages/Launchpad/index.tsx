@@ -1,13 +1,27 @@
 import { Pair, pairKey, useNativePrice } from 'hooks/common/Pair'
 import { useContext, useEffect, useState } from 'react'
 import { useChainId } from 'state/user/hooks'
-import { useAccount, useAllLpBalance } from 'state/wallets/hooks'
+import { useAccount, useAllLpBalance, useProjects } from 'state/wallets/hooks'
 import styled, { ThemeContext } from 'styled-components/macro'
 import Row, { AutoRow, RowBetween, RowFixed } from '../../components/Row'
 import IcoCoffee from '../../assets/ico-coffee.png'
 import CoffeeBackground from '../../assets/coffee-background.png'
 import { Text } from 'rebass'
 import ProjectItem, { ProjectItemProps, Status } from './ProjectItem'
+import ConnectionInstance, { ProjectData } from 'state/connection/instance'
+
+export const ROUND_SEED = 1;
+export const ROUND_PRIVATE = 2;
+export const ROUND_PUBLIC = 3;
+
+export const ROUND_STATE_INIT = 1;
+export const ROUND_STATE_PREPARE = 2;
+export const ROUND_STATE_RASING = 3;
+export const ROUND_STATE_REFUNDING = 4;
+//complete & start refunding
+export const ROUND_STATE_CLAIMING = 6;
+//complete & ready to claim token
+export const ROUND_STATE_END = 7; //close project
 
 export const PageWrapper = styled.main<{ margin?: string; maxWidth?: string }>`
   max-width: 800px;
@@ -115,32 +129,57 @@ export default function Launchpad() {
   const chainId = useChainId()
   const nativePrice = useNativePrice()
   const allLpBalances = useAllLpBalance()
+  const projectDatas = useProjects()
 
   const [pairTasksLoading, setPairTasksLoading] = useState<boolean>(true)
-  const [pairs, setPairs] = useState<Pair[]>([])
+  const [projects, setProjects] = useState<ProjectItemProps[]>([])
 
-  const projects: Array<ProjectItemProps> = [
-    {
-      iconUrl: "https://s2.coinmarketcap.com/static/img/coins/64x64/25051.png",
-      projectCoin: "SuiPepe",
-      projectCoinAddress: "0x333",
-      paymentCoin: "SUI",
-      isHardcapReached: true,
-      isWLStage: true,
-      status: Status.ENDED,
-      raisedAmount: 1000000,
-    },
-    {
-      iconUrl: "https://s2.coinmarketcap.com/static/img/coins/64x64/25398.png",
-      projectCoin: "SuiShiba",
-      projectCoinAddress: "0x444",
-      paymentCoin: "SUI",
-      isHardcapReached: false,
-      isWLStage: false,
-      status: Status.STARTED,
-      raisedAmount: 30,
+  // const projects: Array<ProjectItemProps> = [
+  //   {
+  //     iconUrl: "https://s2.coinmarketcap.com/static/img/coins/64x64/25051.png",
+  //     projectCoin: "SuiPepe",
+  //     projectCoinAddress: "0x333",
+  //     paymentCoin: "SUI",
+  //     isHardcapReached: true,
+  //     isWLStage: true,
+  //     status: Status.ENDED,
+  //     raisedAmount: 1000000,
+  //   },
+  //   {
+  //     iconUrl: "https://s2.coinmarketcap.com/static/img/coins/64x64/25398.png",
+  //     projectCoin: "SuiShiba",
+  //     projectCoinAddress: "0x444",
+  //     paymentCoin: "SUI",
+  //     isHardcapReached: false,
+  //     isWLStage: false,
+  //     status: Status.STARTED,
+  //     raisedAmount: 30,
+  //   }
+  // ]
+
+  useEffect(() => {
+    const fetchProjectTasks = async () => {
+      // get project datas
+      await ConnectionInstance.GetLaunchpadProjects();
+      let projects: ProjectItemProps[] = [];
+      Object.keys(projectDatas).forEach(key => {
+        console.log("HHW projects:", key, projectDatas[key]);
+        projects.push({
+          iconUrl: "https://s2.coinmarketcap.com/static/img/coins/64x64/25051.png",
+          projectCoin: projectDatas[key].token_name,
+          projectCoinAddress: projectDatas[key].token_addr,
+          paymentCoin: projectDatas[key].coin_name,
+          isHardcapReached: projectDatas[key].launch_state.fields.coin_raised.fields.balance >= projectDatas[key].launch_state.fields.hard_cap ,
+          isWLStage: projectDatas[key].launch_state.fields.round == ROUND_PRIVATE,
+          status: projectDatas[key].launch_state.fields.state,
+          raisedAmount: projectDatas[key].launch_state.fields.coin_raised.fields.balance
+        });
+      });
+      setProjects(projects);
+      setPairTasksLoading(false)
     }
-  ]
+    fetchProjectTasks()
+  }, [account])
 
   return (
     <>
