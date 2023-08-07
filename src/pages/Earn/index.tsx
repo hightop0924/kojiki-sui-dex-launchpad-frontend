@@ -111,7 +111,6 @@ export default function Farming() {
       }
       let allPairs = await ConnectionInstance.getSuiAllPair();
       const pairResults = await Promise.all(pairTasksPromise)
-      
       let results = Object.values(allPairs).map((v) => ({
         ...v,
         lpTotal: pairResults.find(p => p !== undefined && p.coinX == v.coinX && p.coinY == v.coinY)?.lpTotal ?? 0,

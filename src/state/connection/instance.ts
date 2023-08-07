@@ -642,7 +642,7 @@ class ConnectionInstance {
           coinYReserve: resource.coinYReserve,
         }
       }
-      // console.log("HHW getAllSuiPairs:", pairs);
+      console.log("HHW getAllSuiPairs:", pairs);
       return pairs
     } catch (error) {
       return {}
@@ -761,7 +761,7 @@ class ConnectionInstance {
 
       const returnValues = getReturnValuesFromInspectResults(result);
 
-      if (!returnValues || !returnValues.length) return [];
+      if (!returnValues || !returnValues.length) return 0;
 
       return bcs.de(returnValues[0][1], Uint8Array.from(returnValues[0][0]));
     } catch (error) {
@@ -799,7 +799,7 @@ class ConnectionInstance {
 
       const returnValues = getReturnValuesFromInspectResults(result);
 
-      if (!returnValues || !returnValues.length) return [];
+      if (!returnValues || !returnValues.length) return 0;
       return bcs.de(returnValues[0][1], Uint8Array.from(returnValues[0][0]));
     } catch (error) {
       console.error(error);
@@ -1176,7 +1176,7 @@ class ConnectionInstance {
         projects[fields.token_name] = fields;
       })
 
-      // console.log("HHW Projects:", projects);
+      console.log("HHW Projects:", projects);
       store.dispatch(setProjects({projects}));
       return projects;
     } catch (error) {

@@ -9,6 +9,10 @@ import CoffeeBackground from '../../assets/coffee-background.png'
 import { Text } from 'rebass'
 import ProjectItem, { ProjectItemProps, Status } from './ProjectItem'
 import ConnectionInstance, { ProjectData } from 'state/connection/instance'
+import { EmptyProposals } from 'pages/Earn'
+import { ThemedText } from 'theme'
+import { Dots } from 'components/swap/styleds'
+import { Trans } from '@lingui/macro'
 
 export const ROUND_SEED = 1;
 export const ROUND_PRIVATE = 2;
@@ -134,36 +138,14 @@ export default function Launchpad() {
   const [pairTasksLoading, setPairTasksLoading] = useState<boolean>(true)
   const [projects, setProjects] = useState<ProjectItemProps[]>([])
 
-  // const projects: Array<ProjectItemProps> = [
-  //   {
-  //     iconUrl: "https://s2.coinmarketcap.com/static/img/coins/64x64/25051.png",
-  //     projectCoin: "SuiPepe",
-  //     projectCoinAddress: "0x333",
-  //     paymentCoin: "SUI",
-  //     isHardcapReached: true,
-  //     isWLStage: true,
-  //     status: Status.ENDED,
-  //     raisedAmount: 1000000,
-  //   },
-  //   {
-  //     iconUrl: "https://s2.coinmarketcap.com/static/img/coins/64x64/25398.png",
-  //     projectCoin: "SuiShiba",
-  //     projectCoinAddress: "0x444",
-  //     paymentCoin: "SUI",
-  //     isHardcapReached: false,
-  //     isWLStage: false,
-  //     status: Status.STARTED,
-  //     raisedAmount: 30,
-  //   }
-  // ]
-
+  let totalRaised = 0;
   useEffect(() => {
     const fetchProjectTasks = async () => {
       // get project datas
       await ConnectionInstance.GetLaunchpadProjects();
       let projects: ProjectItemProps[] = [];
       Object.keys(projectDatas).forEach(key => {
-        console.log("HHW projects:", key, projectDatas[key]);
+        // console.log("HHW projects:", key, projectDatas[key]);
         projects.push({
           iconUrl: "https://s2.coinmarketcap.com/static/img/coins/64x64/25051.png",
           projectCoin: projectDatas[key].token_name,
@@ -174,6 +156,7 @@ export default function Launchpad() {
           status: projectDatas[key].launch_state.fields.state,
           raisedAmount: projectDatas[key].launch_state.fields.coin_raised.fields.balance
         });
+        totalRaised = totalRaised + projectDatas[key].launch_state.fields.coin_raised.fields.balance;
       });
       setProjects(projects);
       setPairTasksLoading(false)
@@ -191,10 +174,10 @@ export default function Launchpad() {
           <SummaryTextHeader> Fully Diluted Market Cap </SummaryTextHeader>
         </AutoRow>
         <AutoRow style={{marginTop: "5px"}}>
-          <SummaryTextHeader> $ 1M </SummaryTextHeader>
-          <SummaryTextHeader> $ 2.55 </SummaryTextHeader>
-          <SummaryTextHeader> $ 26,707,980 </SummaryTextHeader>
-          <SummaryTextHeader> $ 255,000,000 </SummaryTextHeader>
+          <SummaryTextHeader> $ {totalRaised} </SummaryTextHeader>
+          <SummaryTextHeader> $ 3.00 SUI </SummaryTextHeader>
+          <SummaryTextHeader> $ 0 </SummaryTextHeader>
+          <SummaryTextHeader> $ 0 </SummaryTextHeader>
         </AutoRow>
       </BeforePageWrapper>
       <PageWrapper>
@@ -214,7 +197,15 @@ export default function Launchpad() {
         </PageHead>
 
         <PageContent>
-          {
+           {pairTasksLoading ? (
+                  <EmptyProposals>
+                    <ThemedText.DeprecatedBody color={theme.deprecated_text3} textAlign="center">
+                      <Dots>
+                        <Trans>Loading</Trans>
+                      </Dots>
+                    </ThemedText.DeprecatedBody>
+                  </EmptyProposals>
+                ) :
             projects.map(project => (
               <ProjectItem {...project}/>
             ))

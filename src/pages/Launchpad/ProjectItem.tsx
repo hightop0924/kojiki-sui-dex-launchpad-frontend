@@ -25,6 +25,7 @@ export interface ProjectItemProps {
   isWLStage?: boolean;
   status?: Status;
   raisedAmount?: number;
+  totalRaisedAmount?: number;
 }
 
 export const CoinLogo = styled.img`
@@ -68,7 +69,7 @@ export default function ProjectItem({
   isHardcapReached = false,
   isWLStage = false,
   status = Status.STARTED,
-  raisedAmount = 0
+  raisedAmount = 0,
 }: ProjectItemProps) {
 
   const theme = useContext(ThemeContext)

@@ -90,8 +90,7 @@ export function useCoinList(): Coin[] {
 
 export function useCoinMap() {
   const chainId = useChainId()
-  console.log("HHW useCoinMap : ", chainId);
   const coinMap = useAppSelector((state) => state.user.coins[chainId])
-  console.log("HHW useCoinMap : ", coinMap);
+  // console.log("HHW useCoinMap : ", coinMap);
   return coinMap
 }

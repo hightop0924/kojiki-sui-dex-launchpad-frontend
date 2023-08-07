@@ -166,10 +166,14 @@ export default function ProjectDetails() {
   const [pairs, setPairs] = useState<Pair[]>([])
   const [state, setState] = useState(STATE_INIT);
   const [inputValue, setInputValue] = useState('');
-
+  let totalRaised = 0;
   useEffect(() => {
-    console.log("HHW ProjectDetail:", projectInfo);
-    console.log("HHW allCoinbalance:", allCoinBalances);
+    Object.keys(projectDatas).forEach(key => {
+      totalRaised = totalRaised + projectDatas[key].launch_state.fields.coin_raised.fields.balance;
+    });
+
+    // console.log("HHW ProjectDetail:", projectInfo);
+    // console.log("HHW allCoinbalance:", allCoinBalances);
 
     let launchround = projectInfo.launch_state.fields.round; //ROUND_PUBLIC;
     let launchstate = projectInfo.launch_state.fields.state; //ROUND_STATE_RASING; 
@@ -327,10 +331,10 @@ export default function ProjectDetails() {
                   <SummaryTextHeader> FDV </SummaryTextHeader>
                 </AutoRow>
                 <AutoRow style={{ marginTop: "5px" }}>
-                  <SummaryTextHeader> $ 1M </SummaryTextHeader>
+                  <SummaryTextHeader> $ {totalRaised} </SummaryTextHeader>
                   <SummaryTextHeader> $ 3.00 SUI </SummaryTextHeader>
-                  <SummaryTextHeader> $ 6,707,980 </SummaryTextHeader>
-                  <SummaryTextHeader> $ 25,000,000 </SummaryTextHeader>
+                  <SummaryTextHeader> $ 0 </SummaryTextHeader>
+                  <SummaryTextHeader> $ 0 </SummaryTextHeader>
                 </AutoRow>
               </CardBody>
             </Card>
